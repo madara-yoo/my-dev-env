@@ -1,59 +1,382 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
+    <meta charset="UTF-8">
+    <title>Kali Linux Terminal</title>
     <style>
+        * { box-sizing: border-box; }
         body { 
-            margin: 0; background: #0c0c0c; color: #0f0; 
-            font-family: 'Courier New', monospace; height: 100vh;
-            display: flex; justify-content: center; align-items: center;
+            margin: 0; 
+            background: #000; 
+            color: #e0e0e0; 
+            font-family: 'DejaVu Sans Mono', 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
         }
-        /* خلفية النظام */
-        #bg-text { font-size: 5vw; color: #1a1a1a; font-weight: bold; user-select: none; }
-        
+
+        /* خلفية تنين Kali */
+        #kali-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: 
+                radial-gradient(ellipse at center, rgba(30, 60, 120, 0.3) 0%, rgba(0,0,0,0.95) 70%),
+                #000;
+            z-index: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #kali-bg svg {
+            width: 60vmin;
+            height: 60vmin;
+            opacity: 0.85;
+            filter: drop-shadow(0 0 30px rgba(80, 150, 255, 0.4));
+        }
+
+        /* شريط المهام العلوي */
+        #top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 28px;
+            background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+            border-bottom: 1px solid #000;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+            color: #ddd;
+            z-index: 100;
+            justify-content: space-between;
+        }
+        #top-bar .left, #top-bar .right { display: flex; gap: 15px; align-items: center; }
+        #top-bar .logo { color: #5595d9; font-weight: bold; }
+        #top-bar .menu { cursor: pointer; }
+        #top-bar .menu:hover { color: #fff; }
+
         /* أيقونة الترمينال */
         #term-icon { 
-            position: fixed; top: 20px; left: 20px; cursor: pointer; 
-            font-size: 40px; border: 2px solid #0f0; padding: 10px; border-radius: 10px;
+            position: fixed; 
+            bottom: 50px; 
+            right: 20px; 
+            cursor: pointer; 
+            width: 56px; 
+            height: 56px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            z-index: 50;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
         }
-        
-        /* النافذة العائمة */
+        #term-icon:hover {
+            background: #2a2a2a;
+            border-color: #5595d9;
+            transform: translateY(-2px);
+        }
+
+        /* النافذة العائمة - تصميم GNOME Terminal */
         #term-window { 
-            position: fixed; top: 10%; left: 5%; width: 90%; height: 70%;
-            background: rgba(0,0,0,0.9); border: 2px solid #0f0; display: none;
-            flex-direction: column; resize: both; overflow: auto;
+            position: fixed; 
+            top: 40px; 
+            left: 20px; 
+            width: 75%; 
+            height: 75%;
+            background: rgba(0, 0, 0, 0.92);
+            border: 1px solid #1a1a1a;
+            border-radius: 8px 8px 4px 4px;
+            display: none;
+            flex-direction: column;
+            resize: both;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05);
+            z-index: 60;
         }
-        #output { flex: 1; padding: 10px; overflow-y: auto; white-space: pre-wrap; }
-        #input-line { display: flex; padding: 10px; }
-        input { flex: 1; background: transparent; border: none; color: #0f0; outline: none; }
+
+        /* شريط عنوان النافذة */
+        #term-header {
+            background: linear-gradient(to bottom, #3c3c3c, #2a2a2a);
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: move;
+            border-bottom: 1px solid #111;
+            user-select: none;
+        }
+        #term-title {
+            color: #ddd;
+            font-size: 12px;
+            flex: 1;
+            text-align: center;
+        }
+        #term-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .win-btn {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.3);
+            cursor: pointer;
+            font-size: 0;
+        }
+        .btn-close { background: #ff5f56; }
+        .btn-min { background: #ffbd2e; }
+        .btn-max { background: #27c93f; }
+        .win-btn:hover { filter: brightness(1.2); }
+
+        /* قائمة الترمينال */
+        #term-menu {
+            background: #2a2a2a;
+            padding: 3px 10px;
+            font-size: 11px;
+            color: #aaa;
+            border-bottom: 1px solid #111;
+        }
+        #term-menu span { margin-right: 15px; cursor: pointer; }
+        #term-menu span:hover { color: #fff; }
+
+        /* منطقة الإخراج */
+        #output { 
+            flex: 1; 
+            padding: 12px 14px; 
+            overflow-y: auto; 
+            white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #e0e0e0;
+            direction: ltr;
+            text-align: left;
+        }
+        #output::-webkit-scrollbar { width: 10px; }
+        #output::-webkit-scrollbar-track { background: #1a1a1a; }
+        #output::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+
+        /* ألوان الترمينال */
+        .prompt-user { color: #5595d9; font-weight: bold; }
+        .prompt-at { color: #e0e0e0; }
+        .prompt-host { color: #5595d9; font-weight: bold; }
+        .prompt-path { color: #4fa8e0; font-weight: bold; }
+        .prompt-sym { color: #e0e0e0; }
+        .cmd-text { color: #fff; }
+        .output-text { color: #c8c8c8; }
+        .error-text { color: #ff5555; }
+        .success-text { color: #50fa7b; }
+
+        /* سطر الإدخال */
+        #input-line { 
+            display: flex; 
+            padding: 8px 14px; 
+            background: rgba(0,0,0,0.92);
+            border-top: 1px solid #1a1a1a;
+            align-items: center;
+            direction: ltr;
+        }
+        #prompt-static {
+            white-space: nowrap;
+            font-size: 13px;
+            margin-right: 8px;
+        }
+        #cmd { 
+            flex: 1; 
+            background: transparent; 
+            border: none; 
+            color: #fff; 
+            outline: none;
+            font-family: inherit;
+            font-size: 13px;
+            caret-color: #5595d9;
+        }
+
+        /* شريط الحالة السفلي */
+        #status-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 24px;
+            background: linear-gradient(to bottom, #2a2a2a, #1a1a1a);
+            border-top: 1px solid #000;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 11px;
+            color: #aaa;
+            z-index: 100;
+            justify-content: space-between;
+        }
+
+        /* تأثير الـ cursor */
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        .cursor::after {
+            content: '▊';
+            color: #5595d9;
+            animation: blink 1s infinite;
+            margin-right: 2px;
+        }
     </style>
 </head>
 <body>
-    <div id="bg-text">نظام مادارا</div>
-    <div id="term-icon" onclick="document.getElementById('term-window').style.display='flex'">💻</div>
+    <!-- خلفية تنين Kali -->
+    <div id="kali-bg">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="dragonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#5595d9;stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:#3a6fa8;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#1e3a5f;stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            <!-- تنين Kali مبسط -->
+            <path fill="url(#dragonGrad)" d="M256 40 C 180 60, 140 120, 150 200 C 120 210, 90 240, 100 280 C 70 290, 60 330, 90 360 C 80 390, 110 420, 150 410 C 170 450, 220 470, 260 450 C 290 480, 350 470, 370 430 C 410 440, 440 410, 420 370 C 450 350, 450 300, 420 280 C 440 250, 420 210, 380 210 C 390 160, 360 110, 310 100 C 300 70, 280 40, 256 40 Z M 200 180 Q 220 170, 230 190 Q 210 200, 200 180 Z M 310 180 Q 330 170, 340 190 Q 320 200, 310 180 Z M 230 260 Q 256 280, 282 260 Q 270 300, 256 310 Q 242 300, 230 260 Z"/>
+            <!-- أجنحة -->
+            <path fill="url(#dragonGrad)" opacity="0.7" d="M 150 200 Q 80 180, 50 230 Q 100 240, 130 260 Z"/>
+            <path fill="url(#dragonGrad)" opacity="0.7" d="M 362 200 Q 432 180, 462 230 Q 412 240, 382 260 Z"/>
+        </svg>
+    </div>
 
+    <!-- شريط المهام العلوي -->
+    <div id="top-bar">
+        <div class="left">
+            <span class="logo">🐉 Kali</span>
+            <span class="menu">Applications</span>
+            <span class="menu">Places</span>
+            <span class="menu">System</span>
+        </div>
+        <div class="right">
+            <span>🔊</span>
+            <span>🌐</span>
+            <span>🔋</span>
+            <span id="clock"></span>
+        </div>
+    </div>
+
+    <!-- أيقونة الترمينال -->
+    <div id="term-icon" onclick="document.getElementById('term-window').style.display='flex'; document.getElementById('cmd').focus();">
+        🖥️
+    </div>
+
+    <!-- نافذة الترمينال -->
     <div id="term-window">
-        <div style="background:#222; padding:5px; text-align:right; cursor:pointer" onclick="this.parentElement.style.display='none'">[X]</div>
-        <div id="output">مرحباً بك في نظام مادارا...</div>
+        <div id="term-header">
+            <div id="term-buttons">
+                <div class="win-btn btn-close" onclick="document.getElementById('term-window').style.display='none'"></div>
+                <div class="win-btn btn-min"></div>
+                <div class="win-btn btn-max"></div>
+            </div>
+            <div id="term-title">root@kali: ~</div>
+            <div style="width: 60px;"></div>
+        </div>
+        <div id="term-menu">
+            <span>File</span>
+            <span>Edit</span>
+            <span>View</span>
+            <span>Terminal</span>
+            <span>Help</span>
+        </div>
+        <div id="output"></div>
         <div id="input-line">
-            <span>$ </span>
+            <span id="prompt-static">
+                <span class="prompt-user">┌──(</span><span class="prompt-host">root㉿kali</span><span class="prompt-user">)-[</span><span class="prompt-path">~</span><span class="prompt-user">]</span>
+            </span>
+            <span id="prompt-static2">
+                <span class="prompt-user">└─</span><span class="prompt-sym">#</span>
+            </span>
             <input type="text" id="cmd" autofocus>
         </div>
     </div>
 
+    <!-- شريط الحالة -->
+    <div id="status-bar">
+        <span>root@kali: ~</span>
+        <span id="status-right">UTF-8 | 80x24</span>
+    </div>
+
     <script>
+        // عرض الساعة
+        function updateClock() {
+            const now = new Date();
+            const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const time = now.toLocaleTimeString('en-US', {hour12: false});
+            document.getElementById('clock').textContent = 
+                days[now.getDay()] + ' ' + months[now.getMonth()] + ' ' + now.getDate() + ' ' + time;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // رسالة الترحيب
+        const welcome = `
+<span class="success-text">┌──────────────────────────────────────────────────────────┐
+│  Welcome to Kali Linux GNU/Linux Rolling               │
+│  Documentation: https://www.kali.org/docs/             │
+│  Updated: Fri Jun 19 12:00:00 UTC 2026                 │
+└──────────────────────────────────────────────────────────┘</span>
+
+<span class="output-text">Last login: Fri Jun 19 11:45:22 2026 on tty1
+┌──(</span><span class="prompt-host">root㉿kali</span><span class="output-text">)-[</span><span class="prompt-path">~</span><span class="output-text">]</span>
+`;
+        document.getElementById('output').innerHTML = welcome;
+
+        // معالجة الأوامر
         document.getElementById('cmd').onkeydown = async (e) => {
             if (e.key === 'Enter') {
                 const cmd = e.target.value;
-                const res = await fetch('/execute', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({cmd})
-                });
-                const data = await res.json();
-                document.getElementById('output').innerText += "\n$ " + cmd + "\n" + data.output;
+                const output = document.getElementById('output');
+                
+                // إضافة الأمر المدخل
+                output.innerHTML += `<span class="output-text">┌──(</span><span class="prompt-host">root㉿kali</span><span class="output-text">)-[</span><span class="prompt-path">~</span><span class="output-text">]</span>\n`;
+                output.innerHTML += `<span class="output-text">└─</span><span class="prompt-sym">#</span> <span class="cmd-text">${escapeHtml(cmd)}</span>\n`;
+                
+                try {
+                    const res = await fetch('/execute', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({cmd})
+                    });
+                    const data = await res.json();
+                    const isError = data.error || data.status === 'error';
+                    const cls = isError ? 'error-text' : 'output-text';
+                    output.innerHTML += `<span class="${cls}">${escapeHtml(data.output || data.error || 'OK')}</span>\n\n`;
+                } catch (err) {
+                    output.innerHTML += `<span class="error-text">Connection error: ${escapeHtml(err.message)}</span>\n\n`;
+                }
+                
                 e.target.value = '';
+                output.scrollTop = output.scrollHeight;
             }
         };
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+        }
+
+        // سحب النافذة
+        const win = document.getElementById('term-window');
+        const header = document.getElementById('term-header');
+        let isDragging = false, offsetX = 0, offsetY = 0;
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('win-btn')) return;
+            isDragging = true;
+            offsetX = e.clientX - win.offsetLeft;
+            offsetY = e.clientY - win.offsetTop;
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            win.style.left = (e.clientX - offsetX) + 'px';
+            win.style.top = (e.clientY - offsetY) + 'px';
+        });
+        document.addEventListener('mouseup', () => isDragging = false);
     </script>
 </body>
 </html>
