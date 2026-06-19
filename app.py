@@ -1,16 +1,17 @@
 import os
 import pty
-import os
 import select
 import subprocess
+import eventlet
+import eventlet.wsgi
 from flask import Flask, send_from_directory
 from flask_socketio import SocketIO
 
+# إعداد التطبيق
 app = Flask(__name__, static_folder='.hidden_os')
-# إعداد SocketIO ليعمل مع Eventlet
 socketio = SocketIO(app, async_mode='eventlet')
 
-# مسار مجلد الملفات الثابتة
+# مسار الصفحة الرئيسية
 @app.route('/')
 def index():
     return send_from_directory('.hidden_os', 'index.html')
@@ -23,7 +24,6 @@ def handle_input(data):
 
 def read_and_forward():
     while True:
-        # مراقبة مخرجات الترمينال
         r, _, _ = select.select([master_fd], [], [])
         if master_fd in r:
             data = os.read(master_fd, 1024)
@@ -31,13 +31,16 @@ def read_and_forward():
 
 # إعداد الجلسة الحقيقية (PTY)
 master_fd, slave_fd = pty.openpty()
-# تشغيل Bash داخل جلسة تيرمينال حقيقية
 subprocess.Popen(['/bin/bash'], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, preexec_fn=os.setsid)
 
 if __name__ == '__main__':
-    # البدء بالخلفية
-    socketio.start_background_task(read_and_forward)
-    # الحصول على البورت من Render أو استخدام 8080 افتراضياً
+    # الحصول على البورت من متغير بيئة Render
     port = int(os.environ.get("PORT", 8080))
-    # التشغيل باستخدام eventlet للثبات
-    socketio.run(app, host='0.0.0.0', port=port)
+    
+    # تشغيل مهمة القراءة في الخلفية
+    eventlet.spawn(read_and_forward)
+    
+    # تشغيل السيرفر باستخدام eventlet.wsgi (الأكثر استقراراً على Render)
+    print(f"Starting server on port {port}...")
+    sock = eventlet.listen(('0.0.0.0', port))
+    eventlet.wsgi.server(sock, socketio.server)
