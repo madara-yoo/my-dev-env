@@ -1,32 +1,50 @@
+import asyncio
 import os
 import pty
-import select
-import subprocess
-from flask import Flask, send_from_directory
-from flask_socketio import SocketIO
+import shlex
+import struct
+import fcntl
+import termios
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-app = Flask(__name__, static_folder='webos')
-socketio = SocketIO(app, async_mode='eventlet')
+app = FastAPI()
 
-# إعداد الـ Terminal
-master_fd, slave_fd = pty.openpty()
-subprocess.Popen(['/bin/bash'], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, preexec_fn=os.setsid)
+# تشغيل الباش كعملية ترمينال
+master, slave = pty.openpty()
 
-@app.route('/')
-def index():
-    return send_from_directory('webos', 'index.html')
-
-@socketio.on('input')
-def handle_input(data):
-    os.write(master_fd, data.encode())
-
-def read_and_forward():
+async def terminal_reader(websocket: WebSocket):
     while True:
-        r, _, _ = select.select([master_fd], [], [])
-        if master_fd in r:
-            data = os.read(master_fd, 1024)
-            socketio.emit('output', data.decode('utf-8', 'ignore'))
+        try:
+            # قراءة المخرجات من الـ PTY
+            loop = asyncio.get_event_loop()
+            data = await loop.run_in_executor(None, os.read, master, 1024)
+            if data:
+                await websocket.send_text(data.decode('utf-8', 'ignore'))
+        except Exception:
+            break
 
-if __name__ == '__main__':
-    socketio.start_background_task(read_and_forward)
-    socketio.run(app, host='0.0.0.0', port=10000)
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    # تشغيل عملية القراءة في الخلفية
+    reader_task = asyncio.create_task(terminal_reader(websocket))
+    
+    try:
+        while True:
+            data = await websocket.receive_text()
+            os.write(master, data.encode())
+    except WebSocketDisconnect:
+        reader_task.cancel()
+
+# تقديم الواجهة
+app.mount("/webos", StaticFiles(directory="webos"), name="webos")
+
+@app.get("/")
+async def get():
+    return FileResponse("webos/index.html")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))

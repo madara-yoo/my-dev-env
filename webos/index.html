@@ -3,20 +3,20 @@
 <head>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.0.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.0.0/lib/xterm.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
 </head>
 <body style="background:#000; margin:0;">
     <div id="terminal"></div>
     <script>
-        const term = new Terminal({ cursorBlink: true, rows: 20, cols: 80 });
+        const term = new Terminal({ cursorBlink: true });
         term.open(document.getElementById('terminal'));
-        const socket = io();
-
-        // إرسال ما تكتبه في الكيبورد للسيرفر
-        term.onData(data => { socket.emit('input', data); });
         
-        // عرض ما يرسله السيرفر على الشاشة
-        socket.on('output', data => { term.write(data); });
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        
+        term.onData(data => { ws.send(data); });
+        ws.onmessage = event => { term.write(event.data); };
+        
+        // التركيز التلقائي
+        document.body.addEventListener('click', () => { term.focus(); });
     </script>
 </body>
 </html>
