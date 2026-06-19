@@ -3,20 +3,24 @@
 <head>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.0.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.0.0/lib/xterm.js"></script>
+    <style>body { background: #000; }</style>
 </head>
-<body style="background:#000; margin:0;">
+<body>
     <div id="terminal"></div>
     <script>
-        const term = new Terminal({ cursorBlink: true });
+        const term = new Terminal({ cursorBlink: true, fontSize: 14 });
         term.open(document.getElementById('terminal'));
         
-        const ws = new WebSocket(`ws://${window.location.host}/ws`);
-        
-        term.onData(data => { ws.send(data); });
-        ws.onmessage = event => { term.write(event.data); };
-        
-        // التركيز التلقائي
-        document.body.addEventListener('click', () => { term.focus(); });
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+
+        ws.onopen = () => term.write('\x1b[32m[SYSTEM READY]\x1b[0m\r\n');
+        ws.onmessage = event => term.write(event.data);
+        ws.onclose = () => term.write('\r\n\x1b[31m[CONNECTION LOST - REFRESH]\x1b[0m\r\n');
+
+        term.onData(data => { if(ws.readyState === WebSocket.OPEN) ws.send(data); });
+        document.body.addEventListener('click', () => term.focus());
+        term.focus();
     </script>
 </body>
 </html>
