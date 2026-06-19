@@ -6,7 +6,7 @@ app = Flask(__name__, template_folder='.hidden_os')
 # مسار لجلب الملفات من المجلد المخفي
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('.my-web-os/index.html')
 
 @app.route('/execute', methods=['POST'])
 def execute():
