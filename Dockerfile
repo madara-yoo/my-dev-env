@@ -1,12 +1,8 @@
-FROM ubuntu:22.04
-
-# تثبيت الأدوات الضرورية
-RUN apt-get update && apt-get install -y curl nodejs npm
-# تثبيت محرر الكود
-RUN npm install -g code-server
-
-# فتح منفذ التواصل
+FROM python:3.9-slim
+RUN apt-get update && apt-get install -y git
+# تثبيت مكتبة خفيفة جداً لعمل Terminal في المتصفح
+RUN pip install flask
+# أنشئ ملف تشغيل بسيط
+COPY app.py /app.py
 EXPOSE 8080
-
-# تشغيل المحرر عند فتح السيرفر
-CMD ["code-server", "--bind-addr", "0.0.0.0:8080", "--auth", "none"]
+CMD ["python3", "/app.py"]
