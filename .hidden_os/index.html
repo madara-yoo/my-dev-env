@@ -1,8 +1,45 @@
 <!DOCTYPE html>
 <html>
-<body style="background:#000; color:#0f0; font-family:monospace; padding:20px;">
-    <div id="output" style="white-space: pre-wrap;">Welcome to WebOS Terminal...</div>
-    <input type="text" id="cmd" style="background:#000; color:#0f0; border:none; width:100%; outline:none;" autofocus>
+<head>
+    <style>
+        body { 
+            margin: 0; background: #0c0c0c; color: #0f0; 
+            font-family: 'Courier New', monospace; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+        }
+        /* خلفية النظام */
+        #bg-text { font-size: 5vw; color: #1a1a1a; font-weight: bold; user-select: none; }
+        
+        /* أيقونة الترمينال */
+        #term-icon { 
+            position: fixed; top: 20px; left: 20px; cursor: pointer; 
+            font-size: 40px; border: 2px solid #0f0; padding: 10px; border-radius: 10px;
+        }
+        
+        /* النافذة العائمة */
+        #term-window { 
+            position: fixed; top: 10%; left: 5%; width: 90%; height: 70%;
+            background: rgba(0,0,0,0.9); border: 2px solid #0f0; display: none;
+            flex-direction: column; resize: both; overflow: auto;
+        }
+        #output { flex: 1; padding: 10px; overflow-y: auto; white-space: pre-wrap; }
+        #input-line { display: flex; padding: 10px; }
+        input { flex: 1; background: transparent; border: none; color: #0f0; outline: none; }
+    </style>
+</head>
+<body>
+    <div id="bg-text">نظام مادارا</div>
+    <div id="term-icon" onclick="document.getElementById('term-window').style.display='flex'">💻</div>
+
+    <div id="term-window">
+        <div style="background:#222; padding:5px; text-align:right; cursor:pointer" onclick="this.parentElement.style.display='none'">[X]</div>
+        <div id="output">مرحباً بك في نظام مادارا...</div>
+        <div id="input-line">
+            <span>$ </span>
+            <input type="text" id="cmd" autofocus>
+        </div>
+    </div>
+
     <script>
         document.getElementById('cmd').onkeydown = async (e) => {
             if (e.key === 'Enter') {
