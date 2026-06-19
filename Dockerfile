@@ -1,7 +1,7 @@
 FROM python:3.9-slim
 RUN apt-get update && apt-get install -y git
-RUN pip install flask flask-socketio eventlet
+RUN pip install flask
 COPY app.py /app.py
-COPY .hidden_os /.hidden_os
-EXPOSE 8080
+COPY webos /webos
+EXPOSE 10000
 CMD ["python3", "/app.py"]
