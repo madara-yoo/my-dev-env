@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#000; color:#0f0; font-family:monospace; padding:20px;">
+    <div id="output" style="white-space: pre-wrap;">Welcome to WebOS Terminal...</div>
+    <input type="text" id="cmd" style="background:#000; color:#0f0; border:none; width:100%; outline:none;" autofocus>
+    <script>
+        document.getElementById('cmd').onkeydown = async (e) => {
+            if (e.key === 'Enter') {
+                const cmd = e.target.value;
+                const res = await fetch('/execute', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({cmd})
+                });
+                const data = await res.json();
+                document.getElementById('output').innerText += "\n$ " + cmd + "\n" + data.output;
+                e.target.value = '';
+            }
+        };
+    </script>
+</body>
+</html>

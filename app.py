@@ -1,20 +1,24 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, send_from_directory, request, jsonify
 import subprocess
+import os
 
-app = Flask(__name__, template_folder='.hidden_os')
+app = Flask(__name__, static_folder='.hidden_os')
 
-# مسار لجلب الملفات من المجلد المخفي
 @app.route('/')
 def index():
-    return render_template('.my-web-os/index.html')
+    return send_from_directory('.hidden_os', 'index.html')
 
 @app.route('/execute', methods=['POST'])
 def execute():
     cmd = request.json.get('cmd')
-    # هنا نستخدم Popen للحفاظ على جلسة الترمينال مفتوحة
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, text=True)
-    out, err = process.communicate()
-    return jsonify({"output": out + err})
+    try:
+        # تنفيذ الأمر وإرجاع النتيجة
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        return jsonify({"output": result.stdout + result.stderr})
+    except Exception as e:
+        return jsonify({"output": str(e)})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    # Render يحتاج أن يستمع السيرفر على 0.0.0.0 والمنفذ الذي يحدده
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
